@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACKING SIMULATION</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Fira Code', 'Share Tech Mono', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Matrix background */
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0.15;
+        }
+
+        /* Terminal container wrapper */
+        .terminal-container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            gap: 2px;
+        }
+
+        /* Main terminal container */
+        .terminal {
+            flex: 1;
+            height: 100vh;
+            margin: 0;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid rgba(0, 255, 0, 0.2);
+        }
+
+        .terminal:last-child {
+            border-right: none;
+        }
+
+        .terminal::-webkit-scrollbar {
+            display: none;
+        }
+
+        .terminal {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        .header {
+            color: #0f0;
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0f0;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 5px #0f0, 0 0 10px #0f0; }
+            to { text-shadow: 0 0 10px #0f0, 0 0 20px #0f0, 0 0 30px #0f0; }
+        }
+
+        .line {
+            color: #0f0;
+            margin: 5px 0;
+            font-size: 14px;
+            opacity: 0;
+            animation: fadeIn 0.1s forwards;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .command {
+            color: #0ff;
+        }
+
+        .success {
+            color: #0f0;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #f00;
+            font-weight: bold;
+        }
+
+        .warning {
+            color: #ff0;
+        }
+
+        .progress-bar {
+            color: #0f0;
+            font-family: 'Fira Code', 'Share Tech Mono', monospace;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 16px;
+            background: #0f0;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .access-granted {
+            color: #0f0;
+            font-size: 48px;
+            text-align: center;
+            margin: 40px 0;
+            font-weight: bold;
+            text-shadow: 0 0 20px #0f0;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .ip-address {
+            color: #f0f;
+        }
+
+        .data-stream {
+            color: #0a0;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        /* Popup styles - Native Window Look */
+        .popup {
+            position: fixed;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 10px 10px 8px 8px;
+            min-width: 320px;
+            max-width: 420px;
+            z-index: 1000;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.8),
+                0 0 0 1px rgba(0, 255, 0, 0.3),
+                0 0 20px rgba(0, 255, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: popupSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        @keyframes popupSlideIn {
+            0% {
+                transform: scale(0.8) translateY(-20px);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes popupSlideOut {
+            0% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.8) translateY(-20px);
+                opacity: 0;
+            }
+        }
+
+        .popup.closing {
+            animation: popupSlideOut 0.3s cubic-bezier(0.36, 0, 0.66, -0.56);
+        }
+
+        .popup-titlebar {
+            background: linear-gradient(180deg, #2d2d2d 0%, #1a1a1a 100%);
+            border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: move;
+            border-radius: 10px 10px 0 0;
+            position: relative;
+        }
+
+        .popup-titlebar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .popup-controls {
+            display: flex;
+            gap: 8px;
+            z-index: 1;
+        }
+
+        .popup-control {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 0.5px solid rgba(0, 0, 0, 0.5);
+            box-shadow: 
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                0 1px 2px rgba(0, 0, 0, 0.3);
+            transition: filter 0.2s;
+        }
+
+        .popup-control:hover {
+            filter: brightness(1.2);
+        }
+
+        .popup-control.close {
+            background: radial-gradient(circle at 35% 35%, #ff6b68, #e81123);
+        }
+
+        .popup-control.minimize {
+            background: radial-gradient(circle at 35% 35%, #ffc42e, #f59f00);
+        }
+
+        .popup-control.maximize {
+            background: radial-gradient(circle at 35% 35%, #2dd253, #1db841);
+        }
+
+        .popup-title {
+            flex: 1;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #888;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .popup-header {
+            color: #ff4444;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-align: center;
+            text-shadow: 
+                0 0 10px rgba(255, 0, 0, 0.8),
+                0 0 20px rgba(255, 0, 0, 0.4);
+            animation: warningBlink 1s infinite;
+            padding: 15px 15px 0 15px;
+        }
+
+        @keyframes warningBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .popup-content {
+            color: #00ff00;
+            font-size: 13px;
+            line-height: 1.7;
+            padding: 0 18px 18px 18px;
+            background: #0f0f0f;
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+        }
+
+        .popup-progress {
+            margin-top: 10px;
+            color: #0ff;
+        }
+
+        /* Responsive design - Mobile */
+        @media (max-width: 768px) {
+            .terminal-container {
+                gap: 0;
+            }
+
+            #terminal-right {
+                display: none;
+            }
+
+            #terminal-left {
+                border-right: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-bg"></canvas>
+    
+    <div class="terminal-container">
+        <div class="terminal" id="terminal-left">
+            <div class="header">⚠ SYSTEM TERMINAL A ⚠</div>
+            <div id="output-left"></div>
+        </div>
+        <div class="terminal" id="terminal-right">
+            <div class="header">⚠ SYSTEM TERMINAL B ⚠</div>
+            <div id="output-right"></div>
+        </div>
+    </div>
+
+    <script>
+        // Matrix background effect
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const matrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%";
+        const matrixArray = matrix.split("");
+
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+
+        for (let i = 0; i < columns; i++) {
+            drops[i] = 1;
+        }
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#0F0';
+            ctx.font = fontSize + 'px "Fira Code", monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        setInterval(drawMatrix, 35);
+
+        // Sound effects using Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let soundEnabled = true;
+        
+        // Background ambient sound
+        let ambientOscillator = null;
+        let ambientGain = null;
+        
+        function startAmbientSound() {
+            if (ambientOscillator || !soundEnabled) return; // Already playing or muted
+            
+            ambientOscillator = audioContext.createOscillator();
+            ambientGain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            ambientOscillator.connect(filter);
+            filter.connect(ambientGain);
+            ambientGain.connect(audioContext.destination);
+            
+            ambientOscillator.type = 'sawtooth';
+            ambientOscillator.frequency.value = 55; // Low A
+            
+            filter.type = 'lowpass';
+            filter.frequency.value = 200;
+            
+            ambientGain.gain.setValueAtTime(0, audioContext.currentTime);
+            ambientGain.gain.linearRampToValueAtTime(0.015, audioContext.currentTime + 2);
+            
+            ambientOscillator.start();
+        }
+        
+        function stopAmbientSound() {
+            if (ambientOscillator) {
+                ambientGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
+                setTimeout(() => {
+                    if (ambientOscillator) {
+                        ambientOscillator.stop();
+                        ambientOscillator = null;
+                        ambientGain = null;
+                    }
+                }, 500);
+            }
+        }
+        
+        function playTypingSound() {
+            if (!soundEnabled) return;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800 + Math.random() * 200;
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.02, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.05);
+        }
+        
+        function playBeepSound() {
+            if (!soundEnabled) return;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 1000;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+        
+        function playSuccessSound() {
+            if (!soundEnabled) return;
+            const oscillator1 = audioContext.createOscillator();
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator1.connect(gainNode);
+            oscillator2.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator1.frequency.value = 523.25; // C5
+            oscillator2.frequency.value = 659.25; // E5
+            oscillator1.type = 'sine';
+            oscillator2.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator1.start(audioContext.currentTime);
+            oscillator2.start(audioContext.currentTime);
+            oscillator1.stop(audioContext.currentTime + 0.3);
+            oscillator2.stop(audioContext.currentTime + 0.3);
+        }
+        
+        function playWarningSound() {
+            if (!soundEnabled) return;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 440;
+            oscillator.type = 'sawtooth';
+            
+            gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+        
+        function playAlertSound() {
+            if (!soundEnabled) return;
+            // Double beep for alerts
+            const oscillator1 = audioContext.createOscillator();
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator1.connect(gainNode);
+            oscillator2.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator1.frequency.value = 880;
+            oscillator2.frequency.value = 880;
+            oscillator1.type = 'square';
+            oscillator2.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator1.start(audioContext.currentTime);
+            oscillator1.stop(audioContext.currentTime + 0.1);
+            
+            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime + 0.15);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
+            
+            oscillator2.start(audioContext.currentTime + 0.15);
+            oscillator2.stop(audioContext.currentTime + 0.25);
+        }
+
+        // Hacking simulation
+        const outputLeft = document.getElementById('output-left');
+        const outputRight = document.getElementById('output-right');
+
+        const hackingSequenceLeft = [
+            { text: "Initializing secure connection...", delay: 500, class: "command" },
+            { text: "Connecting to remote server...", delay: 800, class: "" },
+            { text: "Connection established: 192.168.0.1", delay: 600, class: "ip-address" },
+            { text: "Bypassing firewall...", delay: 1000, class: "warning" },
+            { popup: 'firewall', delay: 500 },
+            { progress: true, duration: 2000, delay: 100 },
+            { text: "✓ Firewall bypassed successfully", delay: 500, class: "success" },
+            { text: "", delay: 300 },
+            { text: "Scanning network ports...", delay: 600, class: "command" },
+            { text: "PORT 21: OPEN (FTP)", delay: 200, class: "" },
+            { text: "PORT 22: OPEN (SSH)", delay: 200, class: "" },
+            { text: "PORT 80: OPEN (HTTP)", delay: 200, class: "" },
+            { text: "PORT 443: OPEN (HTTPS)", delay: 200, class: "" },
+            { text: "PORT 3306: OPEN (MySQL)", delay: 200, class: "" },
+            { text: "PORT 8080: OPEN (Proxy)", delay: 200, class: "" },
+            { text: "", delay: 300 },
+            { text: "Injecting primary payload...", delay: 1000, class: "warning" },
+            { dataStream: true, lines: 12, delay: 100 },
+            { text: "✓ Primary payload injected", delay: 500, class: "success" },
+            { text: "", delay: 300 },
+            { text: "Establishing backdoor...", delay: 900, class: "warning" },
+            { progress: true, duration: 2500, delay: 100 },
+            { text: "✓ Backdoor established on port 4444", delay: 500, class: "success" },
+            { text: "", delay: 300 },
+            { text: "Extracting credentials...", delay: 1000, class: "command" },
+            { text: "Username: admin", delay: 400, class: "warning" },
+            { text: "Password: ****************", delay: 400, class: "warning" },
+            { text: "SSH Key: ~/.ssh/id_rsa", delay: 400, class: "warning" },
+            { text: "", delay: 500 },
+            { accessGranted: true, delay: 1000 },
+            { text: "", delay: 2000 },
+            { clear: true, delay: 1000 }
+        ];
+
+        const hackingSequenceRight = [
+            { text: "Starting system reconnaissance...", delay: 700, class: "command" },
+            { text: "Target IP: 10.0.0.45", delay: 500, class: "ip-address" },
+            { text: "Analyzing security protocols...", delay: 900, class: "" },
+            { progress: true, duration: 1800, delay: 200 },
+            { text: "✓ Vulnerability detected", delay: 600, class: "success" },
+            { text: "", delay: 300 },
+            { text: "Deploying secondary payload...", delay: 800, class: "warning" },
+            { popup: 'multiple', delay: 500 },
+            { dataStream: true, lines: 10, delay: 100 },
+            { text: "✓ Secondary payload active", delay: 500, class: "success" },
+            { text: "", delay: 300 },
+            { text: "Cracking encryption...", delay: 800, class: "command" },
+            { popup: 'encryption', delay: 500 },
+            { progress: true, duration: 3000, delay: 100 },
+            { text: "✓ Encryption cracked: AES-256", delay: 500, class: "success" },
+            { text: "", delay: 300 },
+            { text: "Accessing file system...", delay: 800, class: "command" },
+            { progress: true, duration: 2000, delay: 100 },
+            { text: "✓ File system access granted", delay: 500, class: "success" },
+            { text: "", delay: 300 },
+            { text: "Mapping directory structure...", delay: 600, class: "command" },
+            { text: "/root/", delay: 200, class: "" },
+            { text: "├── /confidential/", delay: 200, class: "" },
+            { text: "│   ├── classified_project.pdf", delay: 200, class: "" },
+            { text: "│   ├── financial_records.xlsx", delay: 200, class: "" },
+            { text: "│   └── passwords.txt", delay: 200, class: "" },
+            { text: "├── /database/", delay: 200, class: "" },
+            { text: "│   ├── users.db", delay: 200, class: "" },
+            { text: "│   └── backup_2026.tar.gz", delay: 200, class: "" },
+            { text: "", delay: 500 },
+            { text: "Downloading files...", delay: 600, class: "command" },
+            { popup: 'download', delay: 300 },
+            { text: "", delay: 200 },
+            { file: "classified_project.pdf", size: "4.2 MB", delay: 400 },
+            { file: "financial_records.xlsx", size: "890 KB", delay: 400 },
+            { file: "users.db", size: "156 MB", delay: 400 },
+            { text: "", delay: 300 },
+            { text: "✓ All files downloaded successfully", delay: 500, class: "success" },
+            { text: "", delay: 500 },
+            { text: "Clearing traces...", delay: 800, class: "warning" },
+            { text: "→ Deleting log files...", delay: 400, class: "" },
+            { text: "→ Removing backdoor...", delay: 400, class: "" },
+            { text: "→ Wiping memory...", delay: 400, class: "" },
+            { text: "", delay: 500 },
+            { accessGranted: true, delay: 1000 },
+            { text: "", delay: 2000 },
+            { clear: true, delay: 1000 }
+        ];
+
+        function addLine(text, className = "", terminalId = 'left') {
+            const output = terminalId === 'left' ? outputLeft : outputRight;
+            const line = document.createElement('div');
+            line.className = `line ${className}`;
+            line.innerHTML = text + '<span class="cursor"></span>';
+            output.appendChild(line);
+            autoScroll(terminalId);
+            
+            // Play appropriate sound
+            if (className === 'success') {
+                playSuccessSound();
+            } else if (className === 'warning' || className === 'error') {
+                playWarningSound();
+            } else if (text.length > 0 && Math.random() > 0.6) {
+                // Play typing sound randomly to avoid overwhelming audio
+                playTypingSound();
+            }
+            
+            setTimeout(() => {
+                const cursor = line.querySelector('.cursor');
+                if (cursor) cursor.remove();
+            }, 500);
+        }
+
+        function autoScroll(terminalId = 'left') {
+            const terminal = document.getElementById(`terminal-${terminalId}`);
+            terminal.scrollTo({
+                top: terminal.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        function addProgressBar(duration, terminalId = 'left') {
+            const output = terminalId === 'left' ? outputLeft : outputRight;
+            const progressContainer = document.createElement('div');
+            progressContainer.className = 'line progress-bar';
+            output.appendChild(progressContainer);
+            
+            const barLength = 50;
+            let progress = 0;
+            const steps = duration / 50;
+            const increment = 100 / steps;
+            
+            const interval = setInterval(() => {
+                progress += increment;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                }
+                
+                const filled = Math.floor((progress / 100) * barLength);
+                const empty = barLength - filled;
+                const percentage = Math.floor(progress);
+                
+                const bar = '[' + '█'.repeat(filled) + '░'.repeat(empty) + '] ' + percentage + '%';
+                progressContainer.textContent = bar;
+                autoScroll(terminalId);
+                
+                // Beep when complete
+                if (progress >= 100) {
+                    playBeepSound();
+                }
+            }, 50);
+        }
+
+        function addDataStream(lines, terminalId = 'left') {
+            const chars = "0123456789ABCDEFabcdef";
+            for (let i = 0; i < lines; i++) {
+                let data = "";
+                for (let j = 0; j < 80; j++) {
+                    data += chars[Math.floor(Math.random() * chars.length)];
+                }
+                setTimeout(() => {
+                    addLine(data, "data-stream", terminalId);
+                }, i * 50);
+            }
+        }
+
+        function addAccessGranted(terminalId = 'left') {
+            const output = terminalId === 'left' ? outputLeft : outputRight;
+            const msg = document.createElement('div');
+            msg.className = 'access-granted';
+            msg.textContent = '🔓 ACCESS GRANTED 🔓';
+            output.appendChild(msg);
+            autoScroll(terminalId);
+            
+            // Play triumphant success sound
+            playSuccessSound();
+            setTimeout(() => playSuccessSound(), 150);
+        }
+
+        function addFileDownload(filename, size, terminalId = 'left') {
+            addLine(`→ Downloading: ${filename} (${size})`, 'warning', terminalId);
+            const output = terminalId === 'left' ? outputLeft : outputRight;
+            
+            const progressContainer = document.createElement('div');
+            progressContainer.className = 'line progress-bar';
+            output.appendChild(progressContainer);
+            
+            const barLength = 40;
+            const duration = 1500;
+            let progress = 0;
+            const steps = duration / 50;
+            const increment = 100 / steps;
+            
+            const interval = setInterval(() => {
+                progress += increment;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                }
+                
+                const filled = Math.floor((progress / 100) * barLength);
+                const empty = barLength - filled;
+                const percentage = Math.floor(progress);
+                
+                const bar = '  [' + '█'.repeat(filled) + '░'.repeat(empty) + '] ' + percentage + '%';
+                progressContainer.textContent = bar;
+                autoScroll(terminalId);
+                
+                // Beep when file download complete
+                if (progress >= 100) {
+                    playBeepSound();
+                }
+            }, 50);
+        }
+
+        function clearScreen(terminalId = 'left') {
+            const output = terminalId === 'left' ? outputLeft : outputRight;
+            output.innerHTML = '';
+        }
+
+        function createPopup(title, content, position, duration = 3000) {
+            const popup = document.createElement('div');
+            popup.className = 'popup';
+            
+            // Random position if not specified
+            if (!position) {
+                const randomTop = Math.random() * (window.innerHeight - 250);
+                const randomLeft = Math.random() * (window.innerWidth - 400);
+                position = { top: randomTop, left: randomLeft };
+            }
+            
+            popup.style.top = position.top + 'px';
+            popup.style.left = position.left + 'px';
+            
+            popup.innerHTML = `
+                <div class="popup-titlebar">
+                    <div class="popup-controls">
+                        <div class="popup-control close"></div>
+                        <div class="popup-control minimize"></div>
+                        <div class="popup-control maximize"></div>
+                    </div>
+                    <div class="popup-title">SYSTEM ALERT</div>
+                    <div style="width: 54px;"></div>
+                </div>
+                <div class="popup-header">⚠ ${title} ⚠</div>
+                <div class="popup-content">${content}</div>
+            `;
+            
+            document.body.appendChild(popup);
+            
+            // Play alert sound
+            playAlertSound();
+            
+            // Auto close popup
+            setTimeout(() => {
+                popup.classList.add('closing');
+                setTimeout(() => {
+                    popup.remove();
+                }, 300);
+            }, duration);
+        }
+
+        function showMultiplePopups() {
+            const popups = [
+                {
+                    title: 'SECURITY ALERT',
+                    content: 'Unauthorized access detected<br>IP: 192.168.0.1<br>Location: Unknown',
+                    delay: 0
+                },
+                {
+                    title: 'FIREWALL BREACH',
+                    content: 'Port 443 compromised<br>Attempting to block...<br>Status: FAILED',
+                    delay: 800
+                },
+                {
+                    title: 'SYSTEM WARNING',
+                    content: 'Multiple login attempts<br>Admin privileges escalated<br>DANGER LEVEL: CRITICAL',
+                    delay: 1600
+                },
+                {
+                    title: 'DATA EXFILTRATION',
+                    content: 'Files being transferred<br>Bandwidth: 125 MB/s<br>Destination: 45.33.21.108',
+                    delay: 2400
+                },
+                {
+                    title: 'ENCRYPTION FAILURE',
+                    content: 'AES-256 key compromised<br>Database exposed<br>Action required: IMMEDIATE',
+                    delay: 3200
+                }
+            ];
+
+            popups.forEach(popup => {
+                setTimeout(() => {
+                    createPopup(popup.title, popup.content);
+                }, popup.delay);
+            });
+        }
+
+        function openBrowserPopups() {
+            const popupMessages = [
+                { msg: 'WARNING: SYSTEM BREACH DETECTED!', delay: 0 },
+                { msg: 'ALERT: Unauthorized Access!', delay: 500 },
+                { msg: 'CRITICAL: Data Being Stolen!', delay: 1000 },
+                { msg: 'ERROR: Security Compromised!', delay: 1500 }
+            ];
+
+            popupMessages.forEach(item => {
+                setTimeout(() => {
+                    const width = 400;
+                    const height = 200;
+                    const left = Math.random() * (screen.width - width);
+                    const top = Math.random() * (screen.height - height);
+                    
+                    const popup = window.open(
+                        '', 
+                        '_blank', 
+                        `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`
+                    );
+                    
+                    if (popup) {
+                        popup.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <link rel="preconnect" href="https://fonts.googleapis.com">
+                                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                                <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
+                                <style>
+                                    body {
+                                        margin: 0;
+                                        padding: 20px;
+                                        background: #000;
+                                        color: #f00;
+                                        font-family: 'Fira Code', monospace;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        height: 100vh;
+                                        text-align: center;
+                                    }
+                                    h1 {
+                                        font-size: 24px;
+                                        text-shadow: 0 0 20px #f00;
+                                        animation: blink 1s infinite;
+                                    }
+                                    @keyframes blink {
+                                        0%, 100% { opacity: 1; }
+                                        50% { opacity: 0.3; }
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <h1>⚠️<br>${item.msg}<br>⚠️</h1>
+                                <script>
+                                    setTimeout(() => window.close(), 3000);
+                                <\/script>
+                            <\/body>
+                            <\/html>
+                        `);
+                        popup.document.close();
+                    }
+                }, item.delay);
+            });
+        }
+
+        function executeSequence(sequence, terminalId) {
+            let lineDelay = 0;
+            
+            sequence.forEach((item, index) => {
+                lineDelay += item.delay;
+                
+                setTimeout(() => {
+                    if (item.progress) {
+                        addProgressBar(item.duration, terminalId);
+                    } else if (item.dataStream) {
+                        addDataStream(item.lines, terminalId);
+                    } else if (item.accessGranted) {
+                        addAccessGranted(terminalId);
+                    } else if (item.file) {
+                        addFileDownload(item.file, item.size, terminalId);
+                    } else if (item.clear) {
+                        clearScreen(terminalId);
+                    } else if (item.popup) {
+                        if (item.popup === 'multiple') {
+                            showMultiplePopups();
+                        } else if (item.popup === 'firewall') {
+                            createPopup('FIREWALL BREACH', 'Port 443 compromised<br>Attempting to block...<br>Status: FAILED');
+                        } else if (item.popup === 'encryption') {
+                            createPopup('ENCRYPTION FAILURE', 'AES-256 key compromised<br>Database exposed<br>Action required: IMMEDIATE');
+                        } else if (item.popup === 'download') {
+                            createPopup('DATA EXFILTRATION', 'Files being transferred<br>Bandwidth: 125 MB/s<br>Destination: 45.33.21.108');
+                        }
+                    } else {
+                        addLine(item.text, item.class, terminalId);
+                    }
+                }, lineDelay);
+                
+                if (item.progress) {
+                    lineDelay += item.duration;
+                } else if (item.dataStream) {
+                    lineDelay += item.lines * 50;
+                } else if (item.file) {
+                    lineDelay += 1500; // Duration of file download
+                }
+            });
+            
+            // Restart the sequence after it completes
+            const totalDuration = lineDelay + 1000;
+            setTimeout(() => {
+                executeSequence(sequence, terminalId);
+            }, totalDuration);
+        }
+
+        // Enter fullscreen mode
+        function enterFullscreen() {
+            const elem = document.documentElement;
+            
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) { /* Safari */
+                elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) { /* Firefox */
+                elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) { /* IE11 */
+                elem.msRequestFullscreen();
+            }
+        }
+
+        // Exit fullscreen if active
+        function exitFullscreen() {
+            if (document.fullscreenElement || document.webkitFullscreenElement || 
+                document.mozFullScreenElement || document.msFullscreenElement) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Start the simulation automatically
+        function startSimulation() {
+            // Resume audio context on user interaction
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            
+            // Start ambient background sound
+            startAmbientSound();
+            
+            // Start both terminal sequences simultaneously
+            executeSequence(hackingSequenceLeft, 'left');
+            executeSequence(hackingSequenceRight, 'right');
+        }
+        
+        // Enable audio on first interaction
+        document.addEventListener('click', () => {
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+                startAmbientSound();
+            }
+        }, { once: true });
+        
+        // Start after a brief delay
+        setTimeout(startSimulation, 1000);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
